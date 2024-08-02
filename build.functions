@@ -1,0 +1,1196 @@
+
+define_and_export_function() {
+    eval "$1"
+    local func_name
+    func_name=$(echo "$1" | awk '{print $1}')
+    export -f "$func_name"
+}
+
+
+requireBashFour() {
+  if [ -z "${BASH_VERSINFO}" ] ||
+     [ -z "${BASH_VERSINFO[0]}" ] ||
+     [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+        echo "$(basename "$(test -L "$0" && readlink "$0" || echo "$0")") requires Bash version >= 4"
+       exit 1
+  fi
+}
+
+installHomebrew() {
+  echo -ne '\n' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" >/dev/null
+}
+
+requires() {
+
+  local functionName debugOutput scriptName
+  #unset ${functionName} ${debugOutput}
+  scriptName="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+  functionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]
+    do
+      case "${1}" in
+          --requirement)
+            requirement=${2}
+            shift
+            ;;
+          --debug)
+            debugOutput=1
+            ;;
+          *)
+            echo "Unknown parameter: ${1}" >&2
+            return 1
+            ;;
+          esac
+
+          if ! shift; then
+            echo 'Missing parameter argument.' >&2
+            return 1
+          fi
+    done
+
+    if [[ -z ${requirement} ]] \
+      ; then
+        echo "${functionName}: one or more required params are undefined"
+        return 1
+    fi
+
+    [[ debugOutput -gt 1 ]] && echo "[debug] scriptName: ${scriptName}"
+    [[ debugOutput -gt 1 ]] && echo "[debug] functionName: ${functionName}"
+
+    if [[ $(command -v ${requirement}) != *"${requirement}"* ]]; then
+      echo "installing ${requirement}"
+    fi
+}
+
+
+requireTap() {
+
+  local functionName debugOutput scriptName
+  #unset ${functionName} ${debugOutput}
+  scriptName="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+  functionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]
+    do
+      case "${1}" in
+          --tap)
+            tap=${2}
+            shift
+            ;;
+          --debug)
+            debugOutput=1
+            ;;
+          *)
+            echo "Unknown parameter: ${1}" >&2
+            return 1
+            ;;
+          esac
+
+          if ! shift; then
+            echo 'Missing parameter argument.' >&2
+            return 1
+          fi
+    done
+
+    if [[ -z ${tap} ]] \
+      ; then
+        echo "${functionName}: one or more required params are undefined"
+        return 1
+    fi
+
+    [[ debugOutput -gt 1 ]] && echo "[debug] scriptName: ${scriptName}"
+    [[ debugOutput -gt 1 ]] && echo "[debug] functionName: ${functionName}"
+
+    if [[ $(brew tap) != *"${tap}"* ]]; then
+      brew tap "${tap}"
+    fi
+
+}
+
+renderBlessClientConfig() {
+
+  # defaultBlessClientConfigPlath="~/.blessclient/config.yml"
+
+  local localFunctionName debugOutput lambdaFunctionName configFilePath functionName emailAddress privateKeyLocation updateSshAgent duration remoteUsers
+
+  unset ${functionName} ${debugOutput} lambdaFunctionName configFilePath functionName emailAddress privateKeyLocation updateSshAgent duration remoteUsers
+
+  localFunctionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --lambdaFunctionName)
+        lambdaFunctionName=${2}
+        shift
+        ;;
+      --roleArn)
+        roleArn=${2}
+        shift
+        ;;
+     --emailAddress)
+       emailAddress=${2}
+       shift
+       ;;
+     --kmsId)
+      kmsId=${2}
+      shift
+      ;;
+    --configFilePath)
+      configFilePath=${2}
+      shift
+      ;;
+     --privateKeyLocation)
+       privateKeyLocation=${2}
+       shift
+       ;;
+     --updateSshAgent)
+       updateSshAgent=${2}
+       shift
+       ;;
+     --duration)
+       duration=${2}
+       shift
+       ;;
+      --remoteUsers)
+        remoteUsers=${2}
+        shift
+        ;;
+      --awsRegion)
+        awsRegion=${2}
+        shift
+        ;;
+      --awsUserProfile)
+        awsUserProfile=${2}
+        shift
+        ;;
+      --skipPrincipalValidation)
+        skipPrincipalValidation=${2}
+        shift
+        ;;
+      --oktaDomain)
+        oktaDomain=${2}
+        shift
+        ;;
+      --oktaOrg)
+        oktaOrg=${2}
+        shift
+        ;;
+      --oktaProfile)
+        oktaProfile=${2}
+        shift
+        ;;
+      --oktaMfaFactorType)
+        oktaMfaFactorType=${2}
+        shift
+        ;;
+      --oktaMfaProvider)
+        oktaMfaProvider=${2}
+        shift
+        ;;
+      --bastionIps)
+        bastionIps=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+
+  done
+
+  if [[ -z ${emailAddress} || \
+        -z ${kmsId} || \
+        -z ${roleArn} || \
+        -z ${lambdaFunctionName} ]];then
+          echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  configFilePath="${configFilePath-"~/.blessclient/config.yml"}"
+  privateKeyLocation="${privateKeyLocation-"~/.ssh/id_rsa"}"
+  updateSshAgent="${updateSshAgent-"false"}"
+  duration="${duration-"15m1s"}"
+  remoteUsers="${remoteUsers-"$(echo -e "  - ubuntu\n  - bmvadmin\n  - umayadmin\n")"}"
+  awsRegion="${awsRegion-"us-west-2"}"
+  awsUserProfile="${awsUserProfile-"default"}"
+  skipPrincipalValidation="${skipPrincipalValidation-"false"}"
+  oktaDomain="${oktaDomain-"umay.okta.com"}"
+  oktaOrg="${oktaOrg-"umay"}"
+  oktaProfile="${oktaProfile-"default"}"
+  oktaMfaFactorType="${oktaMfaFactorType-"token:software:totp"}"
+  oktaMfaProvider="${oktaMfaProvider-"Okta"}"
+  bastionIps="${bastionIps-"  - 0.0.0.0/0"}"
+
+
+blessClientConfig=$(cat <<EOF
+version: 0
+client_config:
+  configfile: ${configFilePath}
+  aws_user_profile: ${awsUserProfile}
+  aws_username: ${emailAddress}
+  ssh_private_key: ${privateKeyLocation}
+  update_ssh_agent: ${updateSshAgent}
+  duration: ${duration}
+  remote_users:
+${remoteUsers}
+  bastion_ips:
+${bastionIps}
+  skip_principal_validation: ${skipPrincipalValidation}
+lambda_config:
+  role_arn: ${roleArn}
+  function_name: ${lambdaFunctionName}
+  regions:
+  - aws_region: ${awsRegion}
+    kms_auth_key_id: ${kmsId}
+okta_config:
+  domain: ${oktaDomain}
+  organization: ${oktaOrg}
+  profile: ${oktaProfile}
+  mfa_provider: ${oktaMfaProvider}
+  mfa_factor_type: ${oktaMfaFactorType}
+EOF
+)
+
+  echo "${blessClientConfig}"
+}
+
+renderAwsCredentialsConfig() {
+
+    # defaultAwsCredentialsConfig="~/.aws/credentials"
+
+  local localFunctionName debugOutput awsAccessKeyId awsSecretAccessKey awsSecurityToken awsSessionToken
+
+  unset functionName debugOutput awsAccessKeyId awsSecretAccessKey awsSecurityToken awsSessionToken
+
+  localFunctionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --awsAccessKeyId)
+      awsAccessKeyId=${2}
+      shift
+      ;;
+    --awsSecretAccessKey)
+      awsSecretAccessKey=${2}
+      shift
+      ;;
+    --awsSessionToken)
+      awsSessionToken=${2}
+      shift
+      ;;
+    --awsSecurityToken)
+      awsSecurityToken=${2}
+      shift
+      ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${awsAccessKeyId} || \
+        -z ${awsSecretAccessKey} || \
+        -z ${awsSessionToken} || \
+        -z ${awsSecurityToken} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+awsCredentialsConfig=$(cat <<EOF
+[default]
+aws_access_key_id = ${awsAccessKeyId}
+aws_secret_access_key = ${awsSecretAccessKey}
+aws_session_token =  ${awsSessionToken}
+aws_security_token = ${awsSecurityToken}
+EOF
+)
+
+  echo "${awsCredentialsConfig}"
+}
+
+renderConfigBlessclient() {
+
+    # defaultAwsConfigPath="~/.aws/config-blessclient"
+
+
+  local localFunctionName debugOutput lambdaFunctionName configFilePath functionName emailAddress privateKeyLocation updateSshAgent duration remoteUsers configBlessClient
+
+  unset ${functionName} ${debugOutput} lambdaFunctionName configFilePath functionName emailAddress privateKeyLocation updateSshAgent duration remoteUsers configBlessClient
+
+  localFunctionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --roleArn)
+      roleArn=${2}
+      shift
+      ;;
+    --awsSamlUrl)
+      awsSamlUrl=${2}
+      shift
+      ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${roleArn} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  awsSamlUrl="${awsSamlUrl-"home/amazon_aws/0oabfo0ubGtiUjzwz356/272"}"
+
+configBlessClient=$(cat <<EOF
+[default]
+role_arn = ${roleArn}
+aws_saml_url = ${awsSamlUrl}
+EOF
+)
+
+  echo "${configBlessClient}"
+}
+
+renderGimmeAwsCredsConfig() {
+    # OKTA_CONFIG="~/.okta_aws_login_config"
+    # defaultGimmeCredsConfigPath="~/.okta_aws_login_config"
+
+  local localFunctionName debugOutput oktaOrgUrl configFilePath appUrl emailAddress preferredMfaType awsDefaultDuration rememberDevice writeAwsCreds gimmeCredsServer awsGimmeCredsConfig
+
+  unset ${localFunctionName} ${debugOutput} localFunctionName debugOutput oktaOrgUrl configFilePath appUrl emailAddress preferredMfaType awsDefaultDuration rememberDevice writeAwsCredsgimmeCredsServer awsGimmeCredsConfig
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=1
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --oktaOrgUrl)
+      oktaOrgUrl=${2}
+      shift
+      ;;
+    --emailAddress)
+      emailAddress=${2}
+      shift
+      ;;
+    --appUrl)
+      appUrl=${2}
+      shift
+      ;;
+    --preferredMfaType)
+      preferredMfaType=${2}
+      shift
+      ;;
+    --awsDefaultDuration)
+      roleArn=${2}
+      shift
+      ;;
+    --rememberDevice)
+      rememberDevice=${2}
+      shift
+      ;;
+    --resolveAwsAlias)
+      resolveAwsAlias=${2}
+      shift
+      ;;
+    --writeAwsCreds)
+      writeAwsCreds=${2}
+      shift
+      ;;
+    --gimmeCredsServer)
+      gimmeCredsServer=${2}
+      shift
+        ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${emailAddress} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  oktaOrgUrl="${oktaOrgUrl-"https://umay.okta.com"}"
+  appUrl="${appUrl-"https://umay.okta.com/home/amazon_aws/0oabfo0ubGtiUjzwz356/272"}"
+  preferredMfaType="${preferredMfaType-"token:software:totp"}"
+  awsDefaultDuration="${awsDefaultDuration-"3600"}"
+  rememberDevice="${rememberDevice-"True"}"
+  resolveAwsAlias="${resolveAwsAlias-"True"}"
+  writeAwsCreds="${writeAwsCreds-"True"}"
+  gimmeCredsServer="${gimmeCredsServer-"appurl"}"
+
+awsGimmeCredsConfig=$(cat <<EOF
+[DEFAULT]
+okta_org_url = ${oktaOrgUrl}
+okta_auth_server =
+client_id =
+gimme_creds_server = ${gimmeCredsServer}
+aws_appname =
+aws_rolename =
+write_aws_creds = "${writeAwsCreds}"
+cred_profile = default
+okta_username = ${emailAddress}
+app_url = ${appUrl}
+resolve_aws_alias = ${resolveAwsAlias}
+preferred_mfa_type = ${preferredMfaType}
+remember_device = ${rememberDevice}
+aws_default_duration = ${awsDefaultDuration}
+device_token =
+output_format = json
+EOF
+)
+
+  echo "${awsGimmeCredsConfig}"
+}
+
+# - - - - - - - - - - - - - - - - - AWS rds-combined-ca-bundle PEM - - - - - - - - - - - - - - - #
+awsRdsCaBundle() {
+
+    # defaultAwsRdsCaBundlePath="~/rds-combined-ca-bundle.pem
+
+  debugOutput=0
+
+  if [ ! -f ${defaultAwsRdsCaBundleFullPath} ] \
+    ; then
+        echo "${defaultAwsRdsCaBundleFullPath} does not exist and downloading from AWS S3."
+        curl -o ${defaultAwsRdsCaBundleFullPath} https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem
+      else
+        echo "File -> ${defaultAwsRdsCaBundleFullPath} exists and continue generating dynamic RDS credentials"
+  fi
+  echo "${awsRdsCaBundle}"
+}
+
+# - - - - - - - - - - - - - - - - - AWS MySQl RDS Connection - - - - - - - - - - - - - - - - - - - #
+MysqlRDSLogin() {
+
+    # defaultAwsCredentialsConfig="~/.aws/credentials"
+
+  local debugOutput localFunctionName rdsMysqlHostEndpoint rdsMysqlUsername rdsMysqlPort rdsMysqlRegion rdsMysqlTempPassword
+
+  unset debugOutput localFunctionName rdsMysqlHostEndpoint rdsMysqlUsername rdsMysqlPort rdsMysqlRegion rdsMysqlTempPassword
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --rdsMysqlHostEndpoint)
+      rdsMysqlHostEndpoint=${2}
+      shift
+      ;;
+    --rdsMysqlUsername)
+      rdsMysqlUsername=${2}
+      shift
+      ;;
+    --rdsMysqlPort)
+      rdsMysqlPort=${2}
+      shift
+      ;;
+    --rdsMysqlRegion)
+      rdsMysqlRegion=${2}
+      shift
+      ;;
+    --rdsMysqlTempPassword)
+      rdsMysqlTempPassword=${2}
+      shift
+      ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${rdsMysqlHostEndpoint} || \
+        -z ${rdsMysqlUsername} || \
+        -z ${rdsMysqlPort} || \
+        -z ${rdsMysqlRegion} || \
+        -z ${rdsMysqlTempPassword} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+verifyHomebrew() {
+  which -s brew
+  if [[ $? != 0 ]] ; then
+      # Install Homebrew
+      ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+  else
+      brew update
+  fi
+}
+
+install_dependencies() {
+  if ! type 'aws' > /dev/null 2>&1; then
+    brew install awscli || (brew upgrade awscli && exit 1)
+    brew link --overwrite awscli
+  fi
+
+  if ! type 'jq' > /dev/null 2>&1; then
+    brew install jq
+  fi
+
+  if ! type 'yq' > /dev/null 2>&1; then
+    brew install yq
+  fi
+
+  if ! type 'blessclient' > /dev/null 2>&1; then
+    brew tap chanzuckerberg/tap
+    brew install blessclient
+  fi
+
+  if ! type 'mysql' > /dev/null 2>&1; then
+    brew install mysql-client
+    brew link mysql-client --force
+  fi
+
+  if ! type 'psql' > /dev/null 2>&1; then
+    brew install libpq
+    brew link --force libpq
+  fi
+
+  if ! type 'gimme-aws-creds' > /dev/null 2>&1; then
+    pip3 install --upgrade gimme-aws-creds
+  fi
+}
+
+backupFile() {
+  local filename
+  unset localFunctionName debugOutput file
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --filename)
+        filename=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${filename} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  suffix="${suffix-".$(date +%y%m%d_%H%M%S)"}"
+
+  cmd="cp ${filename} ${filename}${suffix}"
+  #cp ${filename} ${filename}${suffix}
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+
+}
+
+installDependencies()
+  {
+  verifyHomebrew
+  install_dependencies
+  }
+
+backupBlessConfiguration()
+ {
+  for file in "${blessConfigFiles[@]}"
+    do
+      [[ debugOutput -gt 0 ]] && echo "file: ${file}"
+      backupFile --filename "${file}" --suffix .${runtime}
+    done
+  [[ debugOutput -gt 0 ]] && echo "Successfully backed up Bless configuration files"
+  }
+
+  backupGimmecredsConfiguration()
+   {
+    for file in "${gimmecredsConfigFiles[@]}"
+      do
+        [[ debugOutput -gt 0 ]] && echo "file: ${file}"
+        backupFile --filename "${file}" --suffix .${runtime}
+      done
+    [[ debugOutput -gt 0 ]] && echo "Successfully backed up gimme-aws-creds configuration files"
+    }
+
+
+  wipeBlessConfiguration()
+   {
+    for file in "${blessConfigFiles[@]}"
+      do
+        [[ debugOutput -gt 0 ]] && echo "file to delete: ${file}"
+        echo "" > "${file}"
+      done
+    [[ debugOutput -gt 0 ]] && echo "Successfully scrubbed all configuration files"
+    }
+
+wipeGimmecredsConfiguration()
+  {
+   for file in "${gimmecredsConfigFiles[@]}"
+    do
+    [[ debugOutput -gt 0 ]] && echo "file to delete: ${file}"
+          echo "" > "${file}"
+        done
+      [[ debugOutput -gt 0 ]] && echo "Successfully scrubbed all configuration files"
+      }
+
+
+backupGimmeCredsConfig()
+   {
+        backupFile --filename "${defaultGimmeCredsConfigFullPath}" --suffix .${runtime}
+    }
+
+backupAwsCredentialsConfig()
+    {
+      backupFile --filename "${defaultAwsCredentialsConfigFullPath}" --suffix .${runtime}
+    }
+
+backupBlessAwsConfig()
+     {
+          backupFile --filename "${defaultBlessAwsConfigFullPath}" --suffix .${runtime}
+      }
+
+backupBlessClientConfig()
+           {
+                backupFile --filename "${defaultBlessClientConfigFullPath}" --suffix .${runtime}
+            }
+
+writeGimmeAwsCredsConfig()
+  {
+    [[ debugOutput -gt 0 ]] && echo "path: ${defaultGimmeCredsConfigFullPath}"
+    touch "${defaultGimmeCredsConfigFullPath}"
+    #renderGimmeAwsCredsConfig --emailAddress "${emailAddress}"
+    echo "$(renderGimmeAwsCredsConfig --emailAddress ${emailAddress})" > "${defaultGimmeCredsConfigFullPath}"
+    [[ debugOutput -gt 0 ]] && echo "Successfully wrote gimme-aws-creds configs"
+  }
+
+# writeConfigBlessclient()
+#   {
+#     gimmecredsJson="$(gimme-aws-creds)"
+#     roleArn="$(echo ${gimmecredsJson} | jq ."role"."arn" -r)"
+#
+#     [[ debugOutput -gt 0 ]] && echo "path: ${defaultBlessAwsConfigFullPath}"
+#     echo "$(renderConfigBlessclient --roleArn "${roleArn}")" > "${defaultBlessAwsConfigFullPath}"
+#   }
+
+writeBlessConfig() {
+
+      # Get Data
+
+    gimmecredsJson="$(gimme-aws-creds)"
+
+      # Set vars and write ~/.aws/credentials
+
+    roleArn="$(echo ${gimmecredsJson} | jq ."role"."arn" -r)"
+    awsAccessKeyId="$(echo ${gimmecredsJson} | jq ."credentials"."aws_access_key_id" -r)"
+    awsSecretAccessKey="$(echo ${gimmecredsJson} | jq ."credentials"."aws_secret_access_key" -r)"
+    awsSessionToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_session_token" -r)"
+    awsSecurityToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_security_token" -r)"
+
+    mkdir -p "${defaultAwsCredentialsConfigPath}"
+    echo "$(renderAwsCredentialsConfig --awsAccessKeyId "${awsAccessKeyId}" --awsSecretAccessKey "${awsSecretAccessKey}" --awsSessionToken "${awsSessionToken}" --awsSecurityToken "${awsSecurityToken}")" > "${defaultAwsCredentialsConfigFullPath}"
+
+      # Set vars and write ~/.blessclient/config.yml
+
+    lambdaFunctionName="$(aws lambda get-function-configuration --function-name BLESS --query FunctionArn --region ${defaultBlessRegion} --output text)"
+    kmsId="$(aws kms list-aliases --region ${defaultBlessRegion} --output text | grep BLESS-us-west-2 | awk '{print $4}')"
+
+    [[ debugOutput -gt 0 ]] && echo "path: ${defaultBlessClientConfigFullPath}"
+
+    mkdir -p "${defaultBlessClientConfigPath}"
+    echo "$(renderBlessClientConfig --privateKeyLocation "${privateKeyLocation}" --emailAddress "${emailAddress}" --roleArn "${roleArn}" --lambdaFunctionName "${lambdaFunctionName}"  --kmsId "${kmsId}")" > "${defaultBlessClientConfigFullPath}"
+
+      # write ~/.aws/config-blessclient
+
+    mkdir -p "${defaultBlessAwsConfigPath}"
+    rm -rf $defaultBlessClientConfigPath/cache
+    echo "$(renderConfigBlessclient --roleArn "${roleArn}")" > "${defaultBlessAwsConfigFullPath}"
+    [[ debugOutput -gt 0 ]] &&  echo "Successfully wrote bless configs"
+}
+
+writeAwsRDSCaBundle() {
+  awsRdsCaBundle
+}
+
+awsRdsMysqlLogin() {
+
+    gimmecredsJson="$(gimme-aws-creds)"
+
+    roleArn="$(echo ${gimmecredsJson} | jq ."role"."arn" -r)"
+    awsAccessKeyId="$(echo ${gimmecredsJson} | jq ."credentials"."aws_access_key_id" -r)"
+    awsSecretAccessKey="$(echo ${gimmecredsJson} | jq ."credentials"."aws_secret_access_key" -r)"
+    awsSessionToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_session_token" -r)"
+    awsSecurityToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_security_token" -r)"
+    echo "$(renderAwsCredentialsConfig --awsAccessKeyId "${awsAccessKeyId}" --awsSecretAccessKey "${awsSecretAccessKey}" --awsSessionToken "${awsSessionToken}" --awsSecurityToken "${awsSecurityToken}")" > "${defaultAwsCredentialsConfigFullPath}"
+
+    read -p "What is the RDS Hostname that you want to login to? :" rdsmysqlhostname
+    read -p "What is the RDS Username that you want to login to? :" rdsmysqlusername
+    #read -p "What is the RDS Port that you want to login to? Ex: Mysql- 3306, Postgreql- 5432:" rdsmysqlport
+    read -p "What is the RDS region that you want to login to? Ex: us-west-2:" rdsmysqlregion
+
+    rdsMysqlHostSslPath="${defaultAwsRdsCaBundleFullPath}"
+    rdsMysqlHostEndpoint="$rdsmysqlhostname"
+    rdsMysqlUsername="$rdsmysqlusername"
+    rdsMysqlPort="$rdsmysqlport"
+    rdsMysqlRegion="$rdsmysqlregion"
+    rdsMysqlTempPassword="$(aws rds generate-db-auth-token --hostname $rdsMysqlHostEndpoint --port 3306 --region $rdsMysqlRegion --username $rdsMysqlUsername)"
+    echo '***** add to your favorite client *****'
+    echo ${rdsMysqlTempPassword}
+    echo '**********'
+    mysql --host=$rdsMysqlHostEndpoint --port=3306 --ssl-ca=$rdsMysqlHostSslPath --enable-cleartext-plugin --user=$rdsMysqlUsername --password=$rdsMysqlTempPassword
+
+    #cmd="mysql --host=$rdsMysqlHostEndpoint --port=3306 --ssl-ca=$rdsMysqlHostSslPath --enable-cleartext-plugin --user=$rdsMysqlUsername --password=$rdsMysqlTempPassword"
+
+    [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+    #eval "${cmd}"
+}
+
+awsRdsPostgresqlLogin() {
+
+    gimmecredsJson="$(gimme-aws-creds)"
+
+    roleArn="$(echo ${gimmecredsJson} | jq ."role"."arn" -r)"
+    roleName="$(echo ${roleArn} | cut -d "/" -f2)"
+    awsAccessKeyId="$(echo ${gimmecredsJson} | jq ."credentials"."aws_access_key_id" -r)"
+    awsSecretAccessKey="$(echo ${gimmecredsJson} | jq ."credentials"."aws_secret_access_key" -r)"
+    awsSessionToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_session_token" -r)"
+    awsSecurityToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_security_token" -r)"
+    echo "$(renderAwsCredentialsConfig --awsAccessKeyId "${awsAccessKeyId}" --awsSecretAccessKey "${awsSecretAccessKey}" --awsSessionToken "${awsSessionToken}" --awsSecurityToken "${awsSecurityToken}")" > "${defaultAwsCredentialsConfigFullPath}"
+
+    read -p "What is the RDS Hostname that you want to login to? :" rdspostgresqlhostname
+    #read -p "What is the RDS Username that you want to login to? :" rdspostgresqlusername
+    #read -p "What is the RDS Port that you want to login to? Ex: Mysql- 3306, Postgreql- 5432 :" rdspostgresqlport
+    read -p "What is the RDS Region that you want to login to Ex: us-west-2? :" rdspostgresqlregion
+    read -p "What is the RDS Database name that you want to login to? :" rdspostgresqldbname
+
+    rdsPostgresqllHostSslPath="${defaultAwsRdsCaBundleFullPath}"
+    rdsPostgresqlHostEndpoint="$rdspostgresqlhostname"
+    #rdsPostgresqlUsername="$rdspostgresqlusername"
+    rdsPostgresqlPort="$rdspostgresqlport"
+    rdsPostgresqlRegion="$rdspostgresqlregion"
+    rdsPostgresqlDbname="$rdspostgresqldbname"
+    export PGPASSWORD="$(aws rds generate-db-auth-token --hostname $rdsPostgresqlHostEndpoint --port 5432 --region $rdsPostgresqlRegion --username $roleName)"
+    echo '***** add to your favorite client *****'
+    echo ${PGPASSWORD}
+    echo '**********'
+    psql -h $rdsPostgresqlHostEndpoint -p 5432 "dbname=$rdsPostgresqlDbname user=$roleName sslrootcert=$rdsPostgresqllHostSslPath sslmode=verify-ca"
+
+    [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+}
+
+checkDependencies() {
+  requireBashFour
+  # for tap in "${tapRequirements[@]}"
+  #   do
+  #     requireTap \
+  #       --tap ${tap} || \
+  #       #--debug || \
+  #         exit 1
+  #   done
+
+  for requirement in "${binaryRequirements[@]}"
+    do
+      requires \
+        --requirement ${requirement} || \
+        #--debug || \
+          exit 1
+    done
+}
+
+awsRedshiftClusterLogin() {
+  local awsRedshiftRegion
+  unset awsRedshiftRegion localFunctionName debugOutput REDSHIFT_CLUSTERS
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+  awsRedshiftRegion="${awsRedshiftRegion}"
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --awsRedshiftRegion)
+        awsRedshiftRegion=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  gimmecredsJson="$(gimme-aws-creds)"
+
+  roleArn="$(echo ${gimmecredsJson} | jq ."role"."arn" -r)"
+  roleName="$(echo ${roleArn} | cut -d "/" -f2)"
+  awsAccessKeyId="$(echo ${gimmecredsJson} | jq ."credentials"."aws_access_key_id" -r)"
+  awsSecretAccessKey="$(echo ${gimmecredsJson} | jq ."credentials"."aws_secret_access_key" -r)"
+  awsSessionToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_session_token" -r)"
+  awsSecurityToken="$(echo ${gimmecredsJson} | jq ."credentials"."aws_security_token" -r)"
+  echo "$(renderAwsCredentialsConfig --awsAccessKeyId "${awsAccessKeyId}" --awsSecretAccessKey "${awsSecretAccessKey}" --awsSessionToken "${awsSessionToken}" --awsSecurityToken "${awsSecurityToken}")" > "${defaultAwsCredentialsConfigFullPath}"
+
+  read -p "What is the Redshift Region that you want to login to Ex: us-east-1? :" awsredshiftregion
+  awsRedshiftRegion="$awsredshiftregion"
+
+  cmd="aws redshift describe-clusters --region $awsRedshiftRegion | jq -r '.Clusters[].ClusterIdentifier'"
+  #cmd="aws redshift describe-clusters --region us-east-1 --query 'Clusters[*].ClusterIdentifier' | sed 's/[][]//g' | tr -d '\"' | tr -d \" \t\n\r\""
+
+  redshiftClusters=( $(eval "${cmd}") )
+
+  printf 'Choose the Redshfit cluster you want to authenticate:\n'
+  for i in "${!redshiftClusters[@]}"; do
+    printf "[%s]\t%s\n" "$i" "${redshiftClusters[$i]}"
+  done
+  printf 'Selection: '
+
+  read input
+  clusterNum=${#redshiftClusters[@]}
+
+  if [[ $input ]] && [ $input -eq $input 2>/dev/null ]
+  then
+    if [[ $input -ge $clusterNum ]] || [[ $input -lt 0 ]]; then
+      echo "Selection is out of range"
+    else
+      echo "Logging into ${redshiftClusters[$input]} REDSHIFT Cluster"
+
+      #read -p "What is the Redshift Cluster Identifier that you want to login to? :" redshiftclusteridentifier
+      read -p "What is the Redshift Hostname that you want to login to? :" redshifthostname
+      #read -p "What is the Redshift Username that you want to login to? :" redshiftusername
+      #read -p "What is the Redshift Port that you want to login to? Ex: Redshift Postgreql- 5439 :" redshiftport
+      #read -p "What is the Redshift Region that you want to login to Ex: us-east-1? :" awsredshiftregion
+      read -p "What is the Redshift Database name that you want to login to? :" redshiftdbname
+
+      #redshiftClusterIdentifier="$redshiftclusteridentifier"
+      redshiftHostEndpoint="$redshifthostname"
+      #redshiftUsername="$redshiftusername"
+      #redshiftPort="$redshiftport"
+      #redshiftRegion="$awsredshiftregion"
+      redshiftDbname="$redshiftdbname"
+
+      export PGPASSWORD="$(aws redshift get-cluster-credentials --cluster-identifier ${redshiftClusters[$input]} --db-user $roleName --db-name $redshiftDbname --duration-seconds 1500 --region $awsRedshiftRegion --output text | awk '{print $1;}')"
+
+      psql -h $redshiftHostEndpoint -p 5439 "dbname=$redshiftDbname user=IAM:$roleName sslrootcert=$rdsPostgresqllHostSslPath sslmode=verify-ca"
+
+    fi
+  else
+    echo "$input is not an integer or not defined"
+  fi
+}
+
+getEksClusters() {
+  local awsRegion
+  unset awsRegion localFunctionName debugOutput EKS_CLUSTERS
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+  awsRegion="${awsRegion-"us-west-2"}"
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --awsRegion)
+        awsRegion=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        debugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  cmd="aws eks list-clusters --region ${awsRegion} --output text | awk -F \" \" '{print \$2}'"
+
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+}
+
+updateEksConfig() {
+  local awsRegion eksClusterName
+  unset awsRegion eksClusterName localFunctionName debugOutput
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --awsRegion)
+        awsRegion=${2}
+        shift
+        ;;
+      --eksClusterName)
+        eksClusterName=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${eksClusterName} || -z ${awsRegion} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  cmd="aws eks update-kubeconfig --region ${awsRegion} --name ${eksClusterName}"
+
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+}
+
+retrieveEksToken() {
+  local awsRegion eksClusterName
+  unset awsRegion eksClusterName localFunctionName debugOutput
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --awsRegion)
+        awsRegion=${2}
+        shift
+        ;;
+      --eksClusterName)
+        eksClusterName=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${eksClusterName} || -z ${awsRegion} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  cmd="aws eks get-token --region ${awsRegion} --cluster-name ${eksClusterName} | jq .status.token | xargs"
+
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+}
+
+checkForValidAwsCreds() {
+  local debugOutput
+  unset debugOutput
+
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --debug)
+        debugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  cmd="aws sts get-caller-identity 2>&1 | grep -q UserId"
+
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+}
+
+switchEksCluster() {
+  unset localFunctionName debugOutput EKS_CLUSTERS
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+  awsRegion="${awsRegion-"us-west-2"}"
+
+  if ! checkForValidAwsCreds ; then
+    echo "No valid AWS creditials, use gimme-aws-creds to get access"
+    return 1
+  fi
+
+  eksClusters=( $(getEksClusters --awsRegion $awsRegion) )
+
+  printf 'Pick a cluster:\n'
+  for i in "${!eksClusters[@]}"; do
+    printf "[%s]\t%s\n" "$i" "${eksClusters[$i]}"
+  done
+  printf 'Selection: '
+
+  read input
+  clusterNum=${#eksClusters[@]}
+
+  if [[ $input -ge $clusterNum ]] || [[ $input -lt 0 ]]; then
+    echo "Selection is out of range"
+  else
+    echo "Switching to ${eksClusters[$input]} EKS Cluster"
+
+    updateEksConfig \
+      --eksClusterName ${eksClusters[$input]} \
+      --awsRegion ${awsRegion}
+  fi
+}
+
+getEksToken() {
+  unset localFunctionName debugOutput
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+  awsRegion="${awsRegion-"us-west-2"}"
+
+  if ! checkForValidAwsCreds ; then
+    echo "No valid AWS creditials, use gimme-aws-creds to get access"
+    return 1
+  fi
+
+  eksClusters=( $(getEksClusters --awsRegion $awsRegion) )
+
+  printf 'Pick a cluster:\n'
+  for i in "${!eksClusters[@]}"; do
+    printf "[%s]\t%s\n" "$i" "${eksClusters[$i]}"
+  done
+  printf 'Selection: '
+
+  read input
+  clusterNum=${#eksClusters[@]}
+
+  if [[ $input -ge $clusterNum ]] || [[ $input -lt 0 ]]; then
+    echo "Selection is out of range"
+  else
+    printf "%s\n\n" "Getting token to ${eksClusters[$input]} EKS Cluster"
+
+    retrieveEksToken \
+      --eksClusterName ${eksClusters[$input]} \
+      --awsRegion ${awsRegion}
+  fi
+}
