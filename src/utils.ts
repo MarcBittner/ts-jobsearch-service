@@ -1,60 +1,55 @@
-// src/utils.ts
-import axios from 'axios';
-import { createObjectCsvWriter } from 'csv-writer';
-import * as fs from 'fs';
-import { JobData, EnvVariables } from './types';
+export function getDateSincePosted(dateSincePosted: string): string {
+  const dateRange: { [key: string]: string } = {
+    "past month": "r2592000",
+    "past week": "r604800",
+    "24hr": "r86400",
+  };
+  return dateRange[dateSincePosted.toLowerCase()] ?? "";
+}
 
-export const fetchJobPostings = async (env: EnvVariables): Promise<JobData[]> => {
-    try {
-        const response = await axios.get('https://api.linkedin.com/v2/jobSearch', {
-            params: {
-                q: 'jobs',
-                keywords: env.SEARCH_KEYWORDS,
-                location: env.SEARCH_LOCATION,
-            },
-            headers: {
-                Authorization: `Bearer ${env.LINKEDIN_ACCESS_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-        });
+export function getExperienceLevel(experienceLevel: string): string {
+  const experienceRange: { [key: string]: string } = {
+    internship: "1",
+    "entry level": "2",
+    associate: "3",
+    senior: "4",
+    director: "5",
+    executive: "6",
+  };
+  return experienceRange[experienceLevel.toLowerCase()] ?? "";
+}
 
-        return response.data.elements.map((job: any) => ({
-            jobId: job.id,
-            title: job.title,
-            company: job.companyName,
-            location: job.location,
-            lastUpdate: new Date().toISOString(),
-        }));
-    } catch (error) {
-        console.error('Error fetching job postings:', error);
-        return [];
-    }
-};
+export function getJobType(jobType: string): string {
+  const jobTypeRange: { [key: string]: string } = {
+    "full time": "F",
+    "full-time": "F",
+    "part time": "P",
+    "part-time": "P",
+    contract: "C",
+    temporary: "T",
+    volunteer: "V",
+    internship: "I",
+  };
+  return jobTypeRange[jobType.toLowerCase()] ?? "";
+}
 
-export const readPreviousData = (filePath: string): JobData[] => {
-    if (fs.existsSync(filePath)) {
-        const data = fs.readFileSync(filePath, 'utf8');
-        const lines = data.split('\n').slice(1); // Skip header
-        return lines.map((line) => {
-            const [jobId, title, company, location, lastUpdate] = line.split(',');
-            return { jobId, title, company, location, lastUpdate };
-        });
-    }
-    return [];
-};
+export function getRemoteFilter(remoteFilter: string): string {
+  const remoteFilterRange: { [key: string]: string } = {
+    "on-site": "1",
+    "on site": "1",
+    remote: "2",
+    hybrid: "3",
+  };
+  return remoteFilterRange[remoteFilter.toLowerCase()] ?? "";
+}
 
-export const saveNewData = async (filePath: string, newData: JobData[]): Promise<void> => {
-    const csvWriter = createObjectCsvWriter({
-        path: filePath,
-        header: [
-            { id: 'jobId', title: 'Job ID' },
-            { id: 'title', title: 'Title' },
-            { id: 'company', title: 'Company' },
-            { id: 'location', title: 'Location' },
-            { id: 'lastUpdate', title: 'Last Update' },
-        ],
-        append: true,
-    });
-
-    await csvWriter.writeRecords(newData);
-};
+export function getSalary(salary: string): string {
+  const salaryRange: { [key: string]: string } = {
+    "40000": "1",
+    "60000": "2",
+    "80000": "3",
+    "100000": "4",
+    "120000": "5",
+  };
+  return salaryRange[salary.toLowerCase()] ?? "";
+}

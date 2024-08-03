@@ -86,7 +86,7 @@ importFiles=(
 
 [[ bash_debug -gt 0 ]] && set -x
 
-_bashlog info  "$(rm -f ./src/*.js 2>&1))"
-_bashlog info  "$(rm -f ./dist/*.js 2>&1))"
-_bashlog info  "$(npm install ${importModules[@]}  2>&1))"
-_bashlog info  "$(npx tsc --build --verbose --listFiles --listEmittedFiles --diagnostics --traceResolution 2>&1))"
+_bashlog info  "$(rm -f ./src/*.js 2>&1 | tee /dev/tty)"
+_bashlog info  "$(rm -f ./dist/*.js 2>&1 | tee /dev/tty)"
+_bashlog info  "$(npm install ${importModules[@]}  2>&1 | tee /dev/tty)"
+_bashlog info  "$(npx tsc --build --verbose --listFiles --listEmittedFiles --diagnostics --traceResolution 2>&1 | tee /dev/tty)"
