@@ -31,7 +31,7 @@ declare -r BL_LOG_TAG=${LOG_TAG:=`basename $0`}
 # Set  BL_DATETIME_FORMAT to the default if DATETIME_FORMAT
 # has not been specified.
 declare -r BL_DATETIME_FORMAT=${DATETIME_FORMAT:-"+%FT%T%:z"}
-echo "1 BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
+# echo "1 BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
 # default BL_LEVEL to INFO if LOG_LEVEL is not set.
 declare -u BL_LEVEL=${LOG_LEVEL:='INFO'}
 
@@ -125,7 +125,7 @@ declare -r bl_syslog_severity
 
 _bashlog ()
 {
-    echo "1.5  BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
+    #echo "1.5  BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
 
     local BL_DATE
     local BL_MESSAGE
@@ -147,7 +147,7 @@ _bashlog ()
     BL_MESSAGE=$2
 
     IFS=$'\n'
-echo "2 BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
+#echo "2 BL_DATETIME_FORMAT: $BL_DATETIME_FORMAT"
     BL_DATE=`date "${BL_DATETIME_FORMAT}"`
 
     if [ ${bl_log_level[$BL_MESSAGE_LEVEL]} -ge $BL_NUM_LOG_LEVEL ]; then

@@ -2,4 +2,6 @@ LINKEDIN_ACCESS_TOKEN=your_linkedin_access_token
 SEARCH_KEYWORDS=developer
 SEARCH_LOCATION=San Francisco Bay Area
 OUTPUT_FILE=output.csv
-FETCH_INTERVAL=0 * * * *  # Cron expression for every hour
+FETCH_INTERVAL=*/2 * * * *
+
+#=0 * * * *  # Cron expression for every hour

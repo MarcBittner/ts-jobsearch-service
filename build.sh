@@ -25,51 +25,55 @@ importFiles=(
 
   # Define nonce import function
 
-importOrAbort() {
-  local importFile debug
-
-  while [[ ${1} ]]; do
-      case "${1}" in
-        --file)
-          importFile=${2}
-          shift
-          ;;
-        --debug)
-          debugOutput=1
-          ;;
-        *)
-          echo "Unknown parameter: ${1}" >&2
-          return 1
-          ;;
-      esac
-
-      if ! shift; then
-        echo 'Missing parameter argument.' >&2
-        return 1
-      fi
-    done
-
-  if [ -r ${importFile} ]; then
-      . ${importFile}
-      [[ debugOutput -gt 0 ]] &&
-      echo "Successfully sourced ${importFile}"
-  else
-      [[ debugOutput -gt 0 ]] &&
-      echo "failed to import ${importFile}: aborting"
-      exit 1
-  fi
-}
+# importOrAbort() {
+#   local importFile debug
+#
+#   while [[ ${1} ]]; do
+#       case "${1}" in
+#         --file)
+#           importFile=${2}
+#           shift
+#           ;;
+#         --debug)
+#           debugOutput=1
+#           ;;
+#         *)
+#           echo "Unknown parameter: ${1}" >&2
+#           return 1
+#           ;;
+#       esac
+#
+#       if ! shift; then
+#         echo 'Missing parameter argument.' >&2
+#         return 1
+#       fi
+#     done
+#
+#   if [ -r ${importFile} ]; then
+#       . ${importFile}
+#       [[ debugOutput -gt 0 ]] &&
+#       echo "Successfully sourced ${importFile}"
+#   else
+#       [[ debugOutput -gt 0 ]] &&
+#       echo "failed to import ${importFile}: aborting"
+#       exit 1
+#   fi
+# }
 
 # Loop through files to source
 
-for import in "${importFiles[@]}"
-  do
-    [[ debugOutput -gt 0 ]] && echo "Sourcing ${sourceDirectory}/${import}"
-    importOrAbort --file ${sourceDirectory}/${import}
-  done
-set +a
+# for import in "${importFiles[@]}"
+#   do
+#     [[ debugOutput -gt 0 ]] && echo "Sourcing ${sourceDirectory}/${import}"
+#     importOrAbort --file ${sourceDirectory}/${import}
+#   done
+# set +a
 
-  # Optionally set -x with a friendly variable
+[ -r ${importFile} ] && . ./build.variables
+[ -r ${importFile} ] && . ./build.functions
+[ -r ${importFile} ] && . ./build.bashlog
+
+
   importModules=(
               "dotenv"
               "node-schedule"
@@ -78,13 +82,11 @@ set +a
               "ffs"
               )
 
+# Optionally set -x with a friendly variable
 
-# . ./build.bashlog
 [[ bash_debug -gt 0 ]] && set -x
 
-
-
-echo $LOG_FILE
-_bashlog info "HI"
-#rm -f ./src/*.js
-_bashlog info < <($(npm install  ${importModules[@]}) 2>&1)
+_bashlog info  "$(rm -f ./src/*.js 2>&1))"
+_bashlog info  "$(rm -f ./dist/*.js 2>&1))"
+_bashlog info  "$(npm install ${importModules[@]}  2>&1))"
+_bashlog info  "$(npx tsc --build --verbose --listFiles --listEmittedFiles --diagnostics --traceResolution 2>&1))"
