@@ -1,19 +1,27 @@
-// index.ts
+// src/index.ts
 import LinkedInService from './LinkedInService';
+import { QueryParams } from './types';
+import fs from 'fs';
+import path from 'path';
 
-const service = new LinkedInService();
-const queryObject = {
-  keyword: process.env.KEYWORD,
-  location: process.env.LOCATION,
-  dateSincePosted: process.env.DATE_SINCE_POSTED,
-  jobType: process.env.JOB_TYPE,
-  remoteFilter: process.env.REMOTE_FILTER,
-  salary: process.env.SALARY,
-  experienceLevel: process.env.EXPERIENCE_LEVEL,
-  sortBy: process.env.SORT_BY,
-  limit: process.env.LIMIT,
+const queryObject: QueryParams = {
+  keyword: 'developer',
+  location: 'San Francisco Bay Area',
+  dateSincePosted: 'past week',
+  experienceLevel: 'entry level',
+  jobType: 'full time',
+  remoteFilter: 'remote',
+  salary: '80000',
+  sortBy: 'recent',
 };
 
-service.fetchJobListings(queryObject).then((jobs) => {
-  console.log('Fetched jobs:', jobs);
-});
+async function fetchAndSaveJobListings() {
+  const linkedInService = new LinkedInService();
+  const jobs = await linkedInService.fetchJobListings(queryObject);
+
+  // Convert jobs to CSV format and save to file
+  const csv = jobs.map(job => Object.values(job).join(',')).join('\n');
+  fs.writeFileSync(path.resolve(__dirname, 'job_listings.csv'), csv);
+}
+
+fetchAndSaveJobListings();

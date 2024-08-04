@@ -1,19 +1,33 @@
-// LinkedInService.ts
-import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { JobListing } from './types';
+// ./src/LinkedInService.ts
+import { RestliClient } from 'linkedin-api-client';
+import { JobListing, QueryParams } from './types';
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load .env file
+
+const accessToken = process.env.ACCESS_TOKEN || process.env.LINKEDIN_ACCESS_TOKEN;
+
+if (!accessToken) {
+  throw new Error('Access token is not defined. Please check your environment variables.');
+}
+
+const restliClient = new RestliClient();
 
 class LinkedInService {
-  private readonly apiUrl: string;
+  private readonly endpoint: string;
 
   constructor() {
-    this.apiUrl = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search';
+    this.endpoint = 'jobSearch'; // Set the endpoint without /v2/
   }
 
-  public async fetchJobListings(queryObject: any): Promise<JobListing[]> {
+  public async fetchJobListings(queryObject: QueryParams): Promise<JobListing[]> {
     try {
       const query = this.buildQuery(queryObject);
-      const response = await axios.get(query);
+      const response = await restliClient.get({
+        resourcePath: `${this.endpoint}${query}`, // Only path after /v2/ should be included
+        accessToken: accessToken as string,
+      });
+
       const jobs = this.parseJobList(response.data);
       return jobs;
     } catch (error) {
@@ -22,120 +36,33 @@ class LinkedInService {
     }
   }
 
-  private buildQuery(queryObj: any): string {
+  private buildQuery(queryObj: QueryParams): string {
     const queryParams: any = {
-      keywords: queryObj.keyword?.trim().replace(' ', '+') || '',
-      location: queryObj.location?.trim().replace(' ', '+') || '',
-      f_TPR: this.getDateSincePosted(queryObj.dateSincePosted),
-      f_E: this.getExperienceLevel(queryObj.experienceLevel),
-      f_JT: this.getJobType(queryObj.jobType),
-      f_WT: this.getRemoteFilter(queryObj.remoteFilter),
-      f_SB2: this.getSalary(queryObj.salary),
-      sortBy: this.getSortBy(queryObj.sortBy),
+      q: 'jobs',
+      keywords: encodeURIComponent(queryObj.keyword || ''),
+      location: encodeURIComponent(queryObj.location || ''),
     };
 
-    let query = `${this.apiUrl}?`;
+    let query = '?';
     for (const param in queryParams) {
       if (queryParams[param]) {
         query += `${param}=${queryParams[param]}&`;
       }
     }
-    return encodeURI(query.slice(0, -1)); // Remove the last '&'
+    return query.slice(0, -1); // Remove the last '&'
   }
 
-  private getDateSincePosted(dateSincePosted: string): string {
-    const dateRange: { [key: string]: string } = {
-      'past month': 'r2592000',
-      'past week': 'r604800',
-      '24hr': 'r86400',
-    };
-    return dateRange[dateSincePosted?.toLowerCase()] ?? '';
-  }
-
-  private getExperienceLevel(experienceLevel: string): string {
-    const experienceRange: { [key: string]: string } = {
-      internship: '1',
-      'entry level': '2',
-      associate: '3',
-      senior: '4',
-      director: '5',
-      executive: '6',
-    };
-    return experienceRange[experienceLevel?.toLowerCase()] ?? '';
-  }
-
-  private getJobType(jobType: string): string {
-    const jobTypeRange: { [key: string]: string } = {
-      'full time': 'F',
-      'full-time': 'F',
-      'part time': 'P',
-      'part-time': 'P',
-      contract: 'C',
-      temporary: 'T',
-      volunteer: 'V',
-      internship: 'I',
-    };
-    return jobTypeRange[jobType?.toLowerCase()] ?? '';
-  }
-
-  private getRemoteFilter(remoteFilter: string): string {
-    const remoteFilterRange: { [key: string]: string } = {
-      'on-site': '1',
-      'on site': '1',
-      remote: '2',
-      hybrid: '3',
-    };
-    return remoteFilterRange[remoteFilter?.toLowerCase()] ?? '';
-  }
-
-  private getSalary(salary: string): string {
-    const salaryRange: { [key: string]: string } = {
-      '40000': '1',
-      '60000': '2',
-      '80000': '3',
-      '100000': '4',
-      '120000': '5',
-    };
-    return salaryRange[salary?.toLowerCase()] ?? '';
-  }
-
-  private getSortBy(sortBy: string): string {
-    return sortBy === 'recent' ? 'DD' : 'R';
-  }
-
-  private parseJobList(jobData: string): JobListing[] {
-    const $ = cheerio.load(jobData);
-    const jobs = $('li');
-
-    const jobObjects: JobListing[] = jobs
-      .map((index, element) => {
-        const job = $(element);
-        const position = job.find('.base-search-card__title').text().trim() || '';
-        const company = job.find('.base-search-card__subtitle').text().trim() || '';
-        const location = job.find('.job-search-card__location').text().trim() || '';
-        const date = job.find('time').attr('datetime') || '';
-        const salary = job.find('.job-search-card__salary-info')
-          .text()
-          .trim()
-          .replace(/\n/g, '')
-          .replace(/ /g, '') || ''; // Replace .replaceAll with .replace(/ /g, '')
-        const jobUrl = job.find('.base-card__full-link').attr('href') || '';
-        const companyLogo = job.find('.artdeco-entity-image').attr('data-delayed-url') || '';
-        const agoTime = job.find('.job-search-card__listdate').text().trim() || '';
-        return {
-          position: position,
-          company: company,
-          companyLogo: companyLogo,
-          location: location,
-          date: date,
-          agoTime: agoTime,
-          salary: salary,
-          jobUrl: jobUrl,
-        };
-      })
-      .get();
-
-    return jobObjects;
+  private parseJobList(jobData: any): JobListing[] {
+    return jobData.elements.map((job: any) => ({
+      position: job.title || '',
+      company: job.companyName || '',
+      companyLogo: job.companyLogoUrl || '',
+      location: job.location || '',
+      date: job.datePosted || '',
+      agoTime: '', // This would depend on additional data available
+      salary: job.salary || '',
+      jobUrl: job.jobUrl || '',
+    }));
   }
 }
 

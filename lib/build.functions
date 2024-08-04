@@ -1,0 +1,433 @@
+
+define_and_export_function() {
+    eval "$1"
+    local func_name
+    func_name=$(echo "$1" | awk '{print $1}')
+    export -f "$func_name"
+}
+
+
+requireBashFour() {
+  if [ -z "${BASH_VERSINFO}" ] ||
+     [ -z "${BASH_VERSINFO[0]}" ] ||
+     [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+        echo "$(basename "$(test -L "$0" && readlink "$0" || echo "$0")") requires Bash version >= 4"
+       exit 1
+  fi
+}
+
+installHomebrew() {
+  echo -ne '\n' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" >/dev/null
+}
+
+requires() {
+
+  local functionName debugOutput scriptName
+  #unset ${functionName} ${debugOutput}
+  scriptName="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+  functionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]
+    do
+      case "${1}" in
+          --requirement)
+            requirement=${2}
+            shift
+            ;;
+          --debug)
+            debugOutput=1
+            ;;
+          *)
+            echo "Unknown parameter: ${1}" >&2
+            return 1
+            ;;
+          esac
+
+          if ! shift; then
+            echo 'Missing parameter argument.' >&2
+            return 1
+          fi
+    done
+
+    if [[ -z ${requirement} ]] \
+      ; then
+        echo "${functionName}: one or more required params are undefined"
+        return 1
+    fi
+
+    [[ debugOutput -gt 1 ]] && echo "[debug] scriptName: ${scriptName}"
+    [[ debugOutput -gt 1 ]] && echo "[debug] functionName: ${functionName}"
+
+    if [[ $(command -v ${requirement}) != *"${requirement}"* ]]; then
+      echo "installing ${requirement}"
+    fi
+}
+
+
+requireTap() {
+
+  local functionName debugOutput scriptName
+  #unset ${functionName} ${debugOutput}
+  scriptName="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+  functionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]
+    do
+      case "${1}" in
+          --tap)
+            tap=${2}
+            shift
+            ;;
+          --debug)
+            debugOutput=1
+            ;;
+          *)
+            echo "Unknown parameter: ${1}" >&2
+            return 1
+            ;;
+          esac
+
+          if ! shift; then
+            echo 'Missing parameter argument.' >&2
+            return 1
+          fi
+    done
+
+    if [[ -z ${tap} ]] \
+      ; then
+        echo "${functionName}: one or more required params are undefined"
+        return 1
+    fi
+
+    [[ debugOutput -gt 1 ]] && echo "[debug] scriptName: ${scriptName}"
+    [[ debugOutput -gt 1 ]] && echo "[debug] functionName: ${functionName}"
+
+    if [[ $(brew tap) != *"${tap}"* ]]; then
+      brew tap "${tap}"
+    fi
+
+}
+
+renderAwsCredentialsConfig() {
+
+    # defaultAwsCredentialsConfig="~/.aws/credentials"
+
+  local localFunctionName debugOutput awsAccessKeyId awsSecretAccessKey awsSecurityToken awsSessionToken
+
+  unset functionName debugOutput awsAccessKeyId awsSecretAccessKey awsSecurityToken awsSessionToken
+
+  localFunctionName="${FUNCNAME[0]}"
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --awsAccessKeyId)
+      awsAccessKeyId=${2}
+      shift
+      ;;
+    --awsSecretAccessKey)
+      awsSecretAccessKey=${2}
+      shift
+      ;;
+    --awsSessionToken)
+      awsSessionToken=${2}
+      shift
+      ;;
+    --awsSecurityToken)
+      awsSecurityToken=${2}
+      shift
+      ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${awsAccessKeyId} || \
+        -z ${awsSecretAccessKey} || \
+        -z ${awsSessionToken} || \
+        -z ${awsSecurityToken} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+awsCredentialsConfig=$(cat <<EOF
+[default]
+aws_access_key_id = ${awsAccessKeyId}
+aws_secret_access_key = ${awsSecretAccessKey}
+aws_session_token =  ${awsSessionToken}
+aws_security_token = ${awsSecurityToken}
+EOF
+)
+
+  echo "${awsCredentialsConfig}"
+}
+
+
+renderGimmeAwsCredsConfig() {
+    # OKTA_CONFIG="~/.okta_aws_login_config"
+    # defaultGimmeCredsConfigPath="~/.okta_aws_login_config"
+
+  local localFunctionName debugOutput oktaOrgUrl configFilePath appUrl emailAddress preferredMfaType awsDefaultDuration rememberDevice writeAwsCreds gimmeCredsServer awsGimmeCredsConfig
+
+  unset ${localFunctionName} ${debugOutput} localFunctionName debugOutput oktaOrgUrl configFilePath appUrl emailAddress preferredMfaType awsDefaultDuration rememberDevice writeAwsCredsgimmeCredsServer awsGimmeCredsConfig
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=1
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --oktaOrgUrl)
+      oktaOrgUrl=${2}
+      shift
+      ;;
+    --emailAddress)
+      emailAddress=${2}
+      shift
+      ;;
+    --appUrl)
+      appUrl=${2}
+      shift
+      ;;
+    --preferredMfaType)
+      preferredMfaType=${2}
+      shift
+      ;;
+    --awsDefaultDuration)
+      roleArn=${2}
+      shift
+      ;;
+    --rememberDevice)
+      rememberDevice=${2}
+      shift
+      ;;
+    --resolveAwsAlias)
+      resolveAwsAlias=${2}
+      shift
+      ;;
+    --writeAwsCreds)
+      writeAwsCreds=${2}
+      shift
+      ;;
+    --gimmeCredsServer)
+      gimmeCredsServer=${2}
+      shift
+        ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${emailAddress} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  oktaOrgUrl="${oktaOrgUrl-"https://umay.okta.com"}"
+  appUrl="${appUrl-"https://umay.okta.com/home/amazon_aws/0oabfo0ubGtiUjzwz356/272"}"
+  preferredMfaType="${preferredMfaType-"token:software:totp"}"
+  awsDefaultDuration="${awsDefaultDuration-"3600"}"
+  rememberDevice="${rememberDevice-"True"}"
+  resolveAwsAlias="${resolveAwsAlias-"True"}"
+  writeAwsCreds="${writeAwsCreds-"True"}"
+  gimmeCredsServer="${gimmeCredsServer-"appurl"}"
+
+awsGimmeCredsConfig=$(cat <<EOF
+[DEFAULT]
+okta_org_url = ${oktaOrgUrl}
+okta_auth_server =
+client_id =
+gimme_creds_server = ${gimmeCredsServer}
+aws_appname =
+aws_rolename =
+write_aws_creds = "${writeAwsCreds}"
+cred_profile = default
+okta_username = ${emailAddress}
+app_url = ${appUrl}
+resolve_aws_alias = ${resolveAwsAlias}
+preferred_mfa_type = ${preferredMfaType}
+remember_device = ${rememberDevice}
+aws_default_duration = ${awsDefaultDuration}
+device_token =
+output_format = json
+EOF
+)
+
+  echo "${awsGimmeCredsConfig}"
+}
+
+# - - - - - - - - - - - - - - - - - AWS rds-combined-ca-bundle PEM - - - - - - - - - - - - - - - #
+awsRdsCaBundle() {
+
+    # defaultAwsRdsCaBundlePath="~/rds-combined-ca-bundle.pem
+
+  debugOutput=0
+
+  if [ ! -f ${defaultAwsRdsCaBundleFullPath} ] \
+    ; then
+        echo "${defaultAwsRdsCaBundleFullPath} does not exist and downloading from AWS S3."
+        curl -o ${defaultAwsRdsCaBundleFullPath} https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem
+      else
+        echo "File -> ${defaultAwsRdsCaBundleFullPath} exists and continue generating dynamic RDS credentials"
+  fi
+  echo "${awsRdsCaBundle}"
+}
+
+# - - - - - - - - - - - - - - - - - AWS MySQl RDS Connection - - - - - - - - - - - - - - - - - - - #
+MysqlRDSLogin() {
+
+    # defaultAwsCredentialsConfig="~/.aws/credentials"
+
+  local debugOutput localFunctionName rdsMysqlHostEndpoint rdsMysqlUsername rdsMysqlPort rdsMysqlRegion rdsMysqlTempPassword
+
+  unset debugOutput localFunctionName rdsMysqlHostEndpoint rdsMysqlUsername rdsMysqlPort rdsMysqlRegion rdsMysqlTempPassword
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+    case "${1}" in
+    --rdsMysqlHostEndpoint)
+      rdsMysqlHostEndpoint=${2}
+      shift
+      ;;
+    --rdsMysqlUsername)
+      rdsMysqlUsername=${2}
+      shift
+      ;;
+    --rdsMysqlPort)
+      rdsMysqlPort=${2}
+      shift
+      ;;
+    --rdsMysqlRegion)
+      rdsMysqlRegion=${2}
+      shift
+      ;;
+    --rdsMysqlTempPassword)
+      rdsMysqlTempPassword=${2}
+      shift
+      ;;
+    --debug)
+      DebugOutput=1
+      ;;
+    *)
+      echo "Unknown parameter: ${1}" >&2
+      return 1
+      ;;
+    esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${rdsMysqlHostEndpoint} || \
+        -z ${rdsMysqlUsername} || \
+        -z ${rdsMysqlPort} || \
+        -z ${rdsMysqlRegion} || \
+        -z ${rdsMysqlTempPassword} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+}
+
+verifyHomebrew() {
+  which -s brew
+  if [[ $? != 0 ]] ; then
+      # Install Homebrew
+      ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+  else
+      brew update
+  fi
+}
+
+backupFile() {
+  local filename
+  unset localFunctionName debugOutput file
+
+  localFunctionName="${FUNCNAME[0]}"
+  debugOutput=0
+
+  while [[ ${1} ]]; do
+      case "${1}" in
+      --filename)
+        filename=${2}
+        shift
+        ;;
+      --suffix)
+        suffix=${2}
+        shift
+        ;;
+      --debug)
+        DebugOutput=1
+        ;;
+      *)
+        echo "Unknown parameter: ${1}" >&2
+        return 1
+        ;;
+      esac
+
+    if ! shift; then
+      echo 'Missing parameter argument.' >&2
+      return 1
+    fi
+  done
+
+  if [[ -z ${filename} ]] \
+    ; then
+    echo "${localFunctionName}: one or more required variables are undefined"
+    return 1
+  fi
+
+  suffix="${suffix-".$(date +%y%m%d_%H%M%S)"}"
+
+  cmd="cp ${filename} ${filename}${suffix}"
+  #cp ${filename} ${filename}${suffix}
+  [[ debugOutput -gt 0 ]] && echo "cmd: ${cmd}"
+
+  eval "${cmd}"
+
+}
+
+
+checkDependencies() {
+  requireBashFour
+  # for tap in "${tapRequirements[@]}"
+  #   do
+  #     requireTap \
+  #       --tap ${tap} || \
+  #       #--debug || \
+  #         exit 1
+  #   done
+
+  for requirement in "${binaryRequirements[@]}"
+    do
+      requires \
+        --requirement ${requirement} || \
+        #--debug || \
+          exit 1
+    done
+}

@@ -1,3 +1,4 @@
+// utils.ts
 export function getDateSincePosted(dateSincePosted: string): string {
   const dateRange: { [key: string]: string } = {
     "past month": "r2592000",

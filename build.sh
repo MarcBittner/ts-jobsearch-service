@@ -69,9 +69,9 @@ importFiles=(
 #   done
 # set +a
 
-[ -r ${importFile} ] && . ./build.variables
-[ -r ${importFile} ] && . ./build.functions
-[ -r ${importFile} ] && . ./build.bashlog
+[ -r ${importFile} ] && . ./lib/build.variables
+[ -r ${importFile} ] && . ./lib/build.functions
+[ -r ${importFile} ] && . ./lib/build.bashlog
 
 
   importModules=(
@@ -80,6 +80,7 @@ importFiles=(
               "axios"
               "csv-writer"
               "ffs"
+              "linkedin-api-client"
               )
 
 # Optionally set -x with a friendly variable
@@ -89,4 +90,4 @@ importFiles=(
 _bashlog info  "$(rm -f ./src/*.js 2>&1 | tee /dev/tty)"
 _bashlog info  "$(rm -f ./dist/*.js 2>&1 | tee /dev/tty)"
 _bashlog info  "$(npm install ${importModules[@]}  2>&1 | tee /dev/tty)"
-_bashlog info  "$(npx tsc --build --verbose --listFiles --listEmittedFiles --diagnostics --traceResolution 2>&1 | tee /dev/tty)"
+_bashlog info  "$(npx tsc --build --listEmittedFiles 2>&1 | tee /dev/tty)"
